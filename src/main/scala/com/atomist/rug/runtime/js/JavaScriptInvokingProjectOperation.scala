@@ -15,6 +15,7 @@ import com.atomist.rug.spi.TypeRegistry
 import com.atomist.source.ArtifactSource
 import com.typesafe.scalalogging.LazyLogging
 import jdk.nashorn.api.scripting.ScriptObjectMirror
+import jdk.nashorn.internal.runtime.Undefined
 
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -211,11 +212,17 @@ abstract class JavaScriptInvokingProjectOperation(
         if (!parameter.isValidValue(x))
           throw new InvalidRugParameterDefaultValue(s"Parameter $pName default value ($x) is not valid: $parameter")
         parameter.setDefaultValue(x)
-      case _ =>
+      case _ => {
+        rug.getMember(pName) match {
+          case v if !v.isInstanceOf[Undefined] =>
+            if (!parameter.isValidValue(v))
+              throw new InvalidRugParameterDefaultValue(s"Parameter $pName default value ($v) is not valid: $parameter")
+            parameter.setDefaultValue(v.toString)
+          case _ =>
+        }
+      }
     }
-    if(details.get("decorated").asInstanceOf[Boolean] && rug.hasMember(pName)){
-      parameter.setDefaultValue(rug.getMember(pName).toString)
-    }
+
     parameter
   }
   /**

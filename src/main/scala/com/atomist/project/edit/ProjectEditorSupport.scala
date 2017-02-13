@@ -28,7 +28,7 @@ trait ProjectEditorSupport
 
   override def modify(as: ArtifactSource, args: ProjectOperationArguments): ModificationAttempt = {
     val poa = addDefaultParameterValues(args)
-    validateParameters(poa)
+     validateParameters(poa)
 
     val r =
       if (!applicability(as).canApply) failOnNotApplicable match {

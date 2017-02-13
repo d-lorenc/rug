@@ -1,8 +1,11 @@
 package com.atomist.rug.runtime.js
 
+import javax.script.{ScriptContext, SimpleBindings}
+
 import com.atomist.project.ProjectOperation
 import com.atomist.source.ArtifactSource
 import jdk.nashorn.api.scripting.ScriptObjectMirror
+import scala.collection.JavaConverters._
 
 /**
   * Find and instantiate JavaScript editors in a Rug archive
@@ -44,7 +47,7 @@ object JavaScriptOperationFinder {
 
   // TODO clean up this dispatch/signature stuff - too coupled
   private def operationsFromVars(rugAs: ArtifactSource, jsc: JavaScriptContext): Seq[JavaScriptInvokingProjectOperation] = {
-    jsc.vars.map(o => extractOperation(o.scriptObjectMirror)) collect {
+    jsc.vars.map(o => extractOperation(jsc, o.key, o.scriptObjectMirror)) collect {
       case Some((EditorType, v)) =>
         new JavaScriptInvokingProjectEditor(jsc, v, rugAs)
       case Some((ReviewerType, v)) =>
@@ -59,9 +62,19 @@ object JavaScriptOperationFinder {
     }
   }
 
-  private def extractOperation(exported: ScriptObjectMirror): Option[(String, ScriptObjectMirror)] = {
+  private def extractOperation(jsc: JavaScriptContext, name: String, exported: ScriptObjectMirror): Option[(String, ScriptObjectMirror)] = {
     val obj = exported.getMember("prototype") match {
-      case modern: ScriptObjectMirror => modern
+      case modern: ScriptObjectMirror =>
+//        val bindings = new SimpleBindings()
+//        bindings.put("rug",modern)
+//
+//        //TODO - why do we need this?
+//        jsc.engine.getContext.getBindings(ScriptContext.ENGINE_SCOPE).asScala.foreach{
+//          case (k: String, v: AnyRef) => bindings.put(k,v)
+//        }
+//        jsc.engine.eval("Object.create(rug);", bindings).asInstanceOf[ScriptObjectMirror]
+        //jsc.engine.eval(s"new exports.${name}.prototype()").asInstanceOf[ScriptObjectMirror]
+        modern.eval("Object.create(this)").asInstanceOf[ScriptObjectMirror]
       case _ => exported
     }
     KnownSignatures.find {
