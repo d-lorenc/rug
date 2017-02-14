@@ -1,5 +1,6 @@
 package com.atomist.tree.pathexpression
 
+import com.atomist.rug.kind.DefaultTypeRegistry
 import com.atomist.rug.spi.TypeRegistry
 import com.atomist.tree.TreeNode
 import com.atomist.tree.pathexpression.ExecutionResult.ExecutionResult
@@ -53,7 +54,7 @@ trait ExpressionEngine {
     */
   def evaluate(node: TreeNode,
                parsed: PathExpression,
-               typeRegistry: TypeRegistry,
+               typeRegistry: TypeRegistry = DefaultTypeRegistry,
                nodePreparer: Option[NodePreparer] = None
               ): ExecutionResult
 
