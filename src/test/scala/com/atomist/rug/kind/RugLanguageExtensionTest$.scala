@@ -10,7 +10,7 @@ import com.atomist.tree.pathexpression.{PathExpressionEngine, PathExpressionPars
 /**
   * Utilities for testing a Rug language expression
   */
-trait LanguageExtensionTest {
+trait RugLanguageExtensionTest$ {
 
   def projectFromDirectory(path: String): ProjectMutableView =
     new ProjectMutableView(FileSystemArtifactSource(FileSystemArtifactSourceIdentifier(new File(path))))
@@ -28,4 +28,4 @@ trait LanguageExtensionTest {
 
 }
 
-object LanguageExtensionTest extends LanguageExtensionTest
+object RugLanguageExtensionTest$ extends RugLanguageExtensionTest$
