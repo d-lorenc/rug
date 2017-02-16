@@ -28,6 +28,8 @@ abstract class TypeUnderFile
     */
   def isOfType(f: FileArtifact): Boolean
 
+  def postProcessingStep(content: String): String = content
+
   override def runtimeClass: Class[_] = classOf[MutableContainerMutableView]
 
   override def findAllIn(context: TreeNode): Option[Seq[TreeNode]] = context match {
@@ -46,7 +48,7 @@ abstract class TypeUnderFile
   private def toView(f: FileArtifactBackedMutableView): Option[TreeNode] = {
     val inner = fileToRawNode(f.currentBackingObject) match {
       case Some(ptn: PositionedTreeNode) =>
-        Some(TextTreeNodeLifecycle.makeWholeFileNodeReady(name, ptn, f))
+        Some(TextTreeNodeLifecycle.makeWholeFileNodeReady(name, ptn, f, postProcessingStep))
       case None => None
       case x => throw new RuntimeException(s"What is $x")
     }

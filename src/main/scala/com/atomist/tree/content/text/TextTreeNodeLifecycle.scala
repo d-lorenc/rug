@@ -21,12 +21,15 @@ object TextTreeNodeLifecycle {
     */
 
   /* This is for Antlr grammars, or anything that represents the entire file in a single parsed node. */
-  def makeWholeFileNodeReady(typeName: String, parsed: PositionedTreeNode, fileArtifact: FileArtifactBackedMutableView): UpdatableTreeNode = {
+  def makeWholeFileNodeReady(typeName: String,
+                             parsed: PositionedTreeNode,
+                             fileArtifact: FileArtifactBackedMutableView,
+                             postProcess: String => String): UpdatableTreeNode = {
     val parsedWithWholeFileOffsets =
       ImmutablePositionedTreeNode(parsed).copy(
         startPosition = OffsetInputPosition(0),
         endPosition = OffsetInputPosition(fileArtifact.content.length))
-    makeReady(typeName, Seq(parsedWithWholeFileOffsets), fileArtifact).head
+    makeReady(typeName, Seq(parsedWithWholeFileOffsets), fileArtifact, postProcess).head
   }
 
 
@@ -42,8 +45,11 @@ object TextTreeNodeLifecycle {
     * Cascade parentage information down into all the nodes.
     * Return the new, Updatable representations of the input PositionedTreeNodes.
     */
-  def makeReady(typeName: String, matches: Seq[PositionedTreeNode], fileArtifact: FileArtifactBackedMutableView): Seq[UpdatableTreeNode] = {
-    val wrapperNodeContainingWholeFileContent = ImmutablePositionedTreeNode.pad(typeName: String, matches, fileArtifact.content)
+  def makeReady(typeName: String,
+                matches: Seq[PositionedTreeNode],
+                fileArtifact: FileArtifactBackedMutableView,
+                postProcess: String => String = identity): Seq[UpdatableTreeNode] = {
+    val wrapperNodeContainingWholeFileContent = ImmutablePositionedTreeNode.pad(typeName: String, matches, fileArtifact.content, postProcess)
     wrapperNodeContainingWholeFileContent.setParent(fileArtifact)
     wrapperNodeContainingWholeFileContent.childNodes.collect {
       case utn: UpdatableTreeNode => utn // should be all of them
