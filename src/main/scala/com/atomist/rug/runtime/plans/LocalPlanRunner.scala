@@ -11,12 +11,12 @@ import scala.concurrent.Future
 /**
   * Runs Plans in this JVM - i.e. no work distribution.
   * @param messageDeliverer
-  * @param instructionExecutor
-  * @param nestedPlanExecutor
+  * @param instructionRunner
+  * @param nestedPlanRunner
   */
 class LocalPlanRunner(messageDeliverer: MessageDeliverer,
-                      instructionRunner: InstructionPlanner,
-                      nestedRunner: Option[PlanRunner] = None) extends PlanRunner {
+                      instructionRunner: InstructionRunner,
+                      nestedPlanRunner: Option[PlanRunner] = None) extends PlanRunner {
 
   override def run(plan: Plan, callbackInput: AnyRef): Future[PlanResult] = {
     val messageLog: Seq[MessageDeliveryError] = plan.messages.flatMap { message =>
@@ -27,7 +27,7 @@ class LocalPlanRunner(messageDeliverer: MessageDeliverer,
     }
     val instructionResponseFutures: Seq[Future[Iterable[PlanLogEvent]]] = plan.instructions.map { respondable =>
       Future {
-        Try { instructionExecutor.run(respondable.instruction, callbackInput) } match {
+        Try { instructionRunner.run(respondable.instruction, callbackInput) } match {
           case ScalaFailure(t) =>
             Seq(InstructionError(respondable.instruction, t))
           case ScalaSuccess(response) =>
@@ -60,10 +60,10 @@ class LocalPlanRunner(messageDeliverer: MessageDeliverer,
       messageDeliverer.deliver(m, instructionResult.orNull)
       None
     case r: Respond =>
-      instructionExecutor.run(r, instructionResult.orNull)
+      instructionRunner.run(r, instructionResult.orNull)
       None
     case p: Plan =>
-      val planRunner = nestedRunner.getOrElse(new LocalPlanRunner(messageDeliverer, instructionRunner, nestedRunner))
+      val planRunner = nestedPlanRunner.getOrElse(new LocalPlanRunner(messageDeliverer, instructionRunner, nestedPlanRunner))
       val planResult = planRunner.run(p, instructionResult.orNull)
       Some(NestedPlanRun(p, planResult))
   }

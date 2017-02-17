@@ -4,6 +4,7 @@ import com.atomist.param.SimpleParameterValues
 import com.atomist.project.edit.ProjectEditor
 import com.atomist.project.generate.ProjectGenerator
 import com.atomist.rug.runtime.AddressableRug
+import com.atomist.rug.runtime.plans.InstructionRunner
 import com.atomist.rug.spi.Handlers.Instruction._
 import com.atomist.rug.spi.Handlers.{Instruction, Response}
 import com.atomist.source.ArtifactSource
@@ -17,8 +18,8 @@ import com.atomist.source.ArtifactSource
 class LocalInstructionRunner(rugs: Seq[AddressableRug],
                             projectFinder: ProjectFinder,
                             projectPersister: ProjectPersister)
-  extends InstructionExecutor{
-  override def execute(instruction: Instruction, callbackInput: Object): Response = {
+  extends InstructionRunner {
+  override def run(instruction: Instruction, callbackInput: Object): Response = {
     instruction match {
       case editor: Edit => {
         rugs.find(p => matches(p, editor.detail)) match {
