@@ -24,12 +24,14 @@ object TextTreeNodeLifecycle {
   def makeWholeFileNodeReady(typeName: String,
                              parsed: PositionedTreeNode,
                              fileArtifact: FileArtifactBackedMutableView,
+                             preProcess: String => String,
                              postProcess: String => String): UpdatableTreeNode = {
+    val endPosition = preProcess(fileArtifact.content).length
     val parsedWithWholeFileOffsets =
       ImmutablePositionedTreeNode(parsed).copy(
         startPosition = OffsetInputPosition(0),
-        endPosition = OffsetInputPosition(fileArtifact.content.length))
-    makeReady(typeName, Seq(parsedWithWholeFileOffsets), fileArtifact, postProcess).head
+        endPosition = OffsetInputPosition(endPosition))
+    makeReady(typeName, Seq(parsedWithWholeFileOffsets), fileArtifact, preProcess, postProcess).head
   }
 
 
@@ -48,8 +50,10 @@ object TextTreeNodeLifecycle {
   def makeReady(typeName: String,
                 matches: Seq[PositionedTreeNode],
                 fileArtifact: FileArtifactBackedMutableView,
+                preProcess: String => String = identity,
                 postProcess: String => String = identity): Seq[UpdatableTreeNode] = {
-    val wrapperNodeContainingWholeFileContent = ImmutablePositionedTreeNode.pad(typeName: String, matches, fileArtifact.content, postProcess)
+    val content = preProcess(fileArtifact.content)
+    val wrapperNodeContainingWholeFileContent = ImmutablePositionedTreeNode.pad(typeName: String, matches, content, postProcess)
     wrapperNodeContainingWholeFileContent.setParent(fileArtifact)
     wrapperNodeContainingWholeFileContent.childNodes.collect {
       case utn: UpdatableTreeNode => utn // should be all of them

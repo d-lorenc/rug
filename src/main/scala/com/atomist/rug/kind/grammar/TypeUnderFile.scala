@@ -28,7 +28,25 @@ abstract class TypeUnderFile
     */
   def isOfType(f: FileArtifact): Boolean
 
-  def postProcessingStep(content: String): String = content
+  /*
+   * Sometimes subclasses will need to do some markup
+   * on the file before turning it into nodes.
+   *
+   * This method returns the version of file contents that
+   * the parsed nodes correspond to.
+   *
+   */
+  def preProcess(content: String): String = content
+// TODO: put these two methods on one object instead
+  /*
+   * In case you need to add markup before parsing,
+   * you probably need to remove it before writing
+   * back to the file.
+   *
+   * This goes from the parsed nodes' version of the
+   * contents to the file's real contents.
+   */
+  def postProcess(content: String): String = content
 
   override def runtimeClass: Class[_] = classOf[MutableContainerMutableView]
 
@@ -48,7 +66,7 @@ abstract class TypeUnderFile
   private def toView(f: FileArtifactBackedMutableView): Option[TreeNode] = {
     val inner = fileToRawNode(f.currentBackingObject) match {
       case Some(ptn: PositionedTreeNode) =>
-        Some(TextTreeNodeLifecycle.makeWholeFileNodeReady(name, ptn, f, postProcessingStep))
+        Some(TextTreeNodeLifecycle.makeWholeFileNodeReady(name, ptn, f, preProcess, postProcess))
       case None => None
       case x => throw new RuntimeException(s"What is $x")
     }
@@ -68,7 +86,7 @@ abstract class TypeUnderFile
   }
 
   /**
-    * Return a parsed node. Useful to validate content, for example in tests.
+    * Return a parsed node.
     *
     * @param f file with content to parse
     * @return
