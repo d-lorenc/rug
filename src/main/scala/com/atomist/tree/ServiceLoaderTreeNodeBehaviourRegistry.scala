@@ -2,6 +2,7 @@ package com.atomist.tree
 
 import java.util.ServiceLoader
 
+import com.atomist.graph.GraphNode
 import com.atomist.rug.RugRuntimeException
 import com.atomist.rug.spi.{TreeNodeBehaviour, TreeNodeBehaviourRegistry}
 import com.typesafe.scalalogging.LazyLogging
@@ -11,9 +12,9 @@ import scala.collection.JavaConverters._
 
 class ServiceLoaderTreeNodeBehaviourRegistry extends TreeNodeBehaviourRegistry with LazyLogging {
 
-  private lazy val behaviours: Seq[TreeNodeBehaviour[TreeNode]] = {
+  private lazy val behaviours: Seq[TreeNodeBehaviour[GraphNode]] = {
     ServiceLoader.load(classOf[TreeNodeBehaviour[_]]).asScala.map {
-      case c: TreeNodeBehaviour[TreeNode @unchecked] =>
+      case c: TreeNodeBehaviour[GraphNode @unchecked] =>
         logger.info(s"Registered Tree Node Behaviour '${c.name}'")
         c
       case wtf =>
@@ -21,7 +22,7 @@ class ServiceLoaderTreeNodeBehaviourRegistry extends TreeNodeBehaviourRegistry w
     }
   }.toSeq
 
-  override def findByNodeAndName(treeNode: TreeNode, name: String): Option[TreeNodeBehaviour[TreeNode]] = {
+  override def findByNodeAndName(treeNode: GraphNode, name: String): Option[TreeNodeBehaviour[GraphNode]] = {
     val nodeTypes = treeNode.nodeTags
     val candidates = behaviours.filter(c => c.name == name && JavaConversions.asScalaSet(c.nodeTypes).exists(t => nodeTypes.contains(t)))
     candidates.length match {

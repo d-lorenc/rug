@@ -1,6 +1,6 @@
 package com.atomist.rug.spi
 
-import com.atomist.tree.TreeNode
+import com.atomist.tree.GraphNode
 
 /**
   * Allows Rug to dynamically find all registered Behaviour
@@ -10,6 +10,6 @@ trait TreeNodeBehaviourRegistry {
   /**
     * Find a Behaviour by TreeNode and function name
     */
-  def findByNodeAndName(treeNode: TreeNode, name: String): Option[TreeNodeBehaviour[TreeNode]]
+  def findByNodeAndName(treeNode: GraphNode, name: String): Option[TreeNodeBehaviour[GraphNode]]
 
 }

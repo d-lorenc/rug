@@ -2,12 +2,12 @@ package com.atomist.rug.spi
 
 import java.util.Set
 
-import com.atomist.tree.TreeNode
+import com.atomist.graph.GraphNode
 
 /**
   * Attaches behaviour to the a TreeNode.
   */
-trait TreeNodeBehaviour[T <: TreeNode] {
+trait TreeNodeBehaviour[T <: GraphNode] {
 
   /**
     * The TreeNode the name function should become available

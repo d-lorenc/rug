@@ -2,6 +2,7 @@ package com.atomist.rug.runtime.js.interop
 
 import java.util.Collections
 
+import com.atomist.graph.GraphNode
 import com.atomist.rug.RugRuntimeException
 import com.atomist.rug.kind.core.{FileMutableView, FileType}
 import com.atomist.rug.spi.{TreeNodeBehaviour, TreeNodeBehaviourRegistry}
@@ -52,9 +53,9 @@ class jsSafeCommittingProxyTest extends FlatSpec with Matchers {
 
 class FakeTreeNodeBehaviourRegistry(fakeCommand: FakeTreeNodeBehaviour = new FakeTreeNodeBehaviour) extends TreeNodeBehaviourRegistry {
 
-  override def findByNodeAndName(treeNode: TreeNode, name: String): Option[TreeNodeBehaviour[TreeNode]] = {
+  override def findByNodeAndName(treeNode: GraphNode, name: String): Option[TreeNodeBehaviour[GraphNode]] = {
     name match {
-      case "execute" => Option(fakeCommand.asInstanceOf[TreeNodeBehaviour[TreeNode]])
+      case "execute" => Option(fakeCommand.asInstanceOf[TreeNodeBehaviour[GraphNode]])
       case _ => Option.empty
     }
   }
@@ -70,7 +71,7 @@ class FakeTreeNodeBehaviour extends TreeNodeBehaviour[FileMutableView] {
   override def invokeOn(treeNode: FileMutableView): AnyRef = {
     fmv = treeNode
     new AnotherFakeCommand
-  
+
   }
 }
 

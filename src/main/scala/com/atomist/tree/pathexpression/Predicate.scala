@@ -1,8 +1,9 @@
 package com.atomist.tree.pathexpression
 
+import com.atomist.graph.GraphNode
 import com.atomist.rug.spi.TypeRegistry
+import com.atomist.tree.TreeNode
 import com.atomist.tree.pathexpression.ExpressionEngine.NodePreparer
-import com.atomist.tree.{ContainerTreeNode, TreeNode}
 import com.fasterxml.jackson.annotation.JsonProperty
 
 /**
@@ -24,8 +25,8 @@ trait Predicate {
     * @param returnedNodes all nodes returned. This argument is
     *                      often ignored, but can be used to discern the index of the target node.
     */
-  def evaluate(nodeToTest: TreeNode,
-               returnedNodes: Seq[TreeNode],
+  def evaluate(nodeToTest: GraphNode,
+               returnedNodes: Seq[GraphNode],
                ee: ExpressionEngine,
                typeRegistry: TypeRegistry,
                nodePreparer: Option[NodePreparer]): Boolean
@@ -45,8 +46,8 @@ case object TruePredicate extends Predicate {
 
   override def toString: String = "true"
 
-  override def evaluate(root: TreeNode,
-                        returnedNodes: Seq[TreeNode],
+  override def evaluate(root: GraphNode,
+                        returnedNodes: Seq[GraphNode],
                         ee: ExpressionEngine,
                         typeRegistry: TypeRegistry,
                         nodePreparer: Option[NodePreparer]): Boolean = true
@@ -56,8 +57,8 @@ case object FalsePredicate extends Predicate {
 
   override def toString: String = "false"
 
-  override def evaluate(root: TreeNode,
-                        returnedNodes: Seq[TreeNode],
+  override def evaluate(root: GraphNode,
+                        returnedNodes: Seq[GraphNode],
                         ee: ExpressionEngine,
                         typeRegistry: TypeRegistry,
                         nodePreparer: Option[NodePreparer]): Boolean = false
@@ -67,8 +68,8 @@ case class NegationOfPredicate(p: Predicate) extends Predicate {
 
   override def toString: String = "!" + p.name
 
-  override def evaluate(root: TreeNode,
-                        returnedNodes: Seq[TreeNode],
+  override def evaluate(root: GraphNode,
+                        returnedNodes: Seq[GraphNode],
                         ee: ExpressionEngine,
                         typeRegistry: TypeRegistry,
                         nodePreparer: Option[NodePreparer]): Boolean = !p.evaluate(root, returnedNodes, ee, typeRegistry, nodePreparer)
@@ -78,8 +79,8 @@ case class AndPredicate(a: Predicate, b: Predicate) extends Predicate {
 
   override def toString: String = a.name + " and " + b.name
 
-  override def evaluate(root: TreeNode,
-                        returnedNodes: Seq[TreeNode],
+  override def evaluate(root: GraphNode,
+                        returnedNodes: Seq[GraphNode],
                         ee: ExpressionEngine,
                         typeRegistry: TypeRegistry,
                         nodePreparer: Option[NodePreparer]): Boolean =
@@ -91,8 +92,8 @@ case class OrPredicate(a: Predicate, b: Predicate) extends Predicate {
 
   override def toString: String = a.name + " or " + b.name
 
-  override def evaluate(root: TreeNode,
-                        returnedNodes: Seq[TreeNode],
+  override def evaluate(root: GraphNode,
+                        returnedNodes: Seq[GraphNode],
                         ee: ExpressionEngine,
                         typeRegistry: TypeRegistry,
                         nodePreparer: Option[NodePreparer]): Boolean =
@@ -121,8 +122,8 @@ case class OptionalPredicate(optionalPredicate: Predicate) extends Predicate {
     * @param nodePreparer
     * @return
     */
-  override def evaluate(root: TreeNode,
-                        returnedNodes: Seq[TreeNode],
+  override def evaluate(root: GraphNode,
+                        returnedNodes: Seq[GraphNode],
                         ee: ExpressionEngine,
                         typeRegistry: TypeRegistry,
                         nodePreparer: Option[NodePreparer]): Boolean = true
@@ -134,8 +135,8 @@ case class OptionalPredicate(optionalPredicate: Predicate) extends Predicate {
   */
 case class IndexPredicate(i: Int) extends Predicate {
 
-  def evaluate(tn: TreeNode,
-               among: Seq[TreeNode],
+  def evaluate(tn: GraphNode,
+               among: Seq[GraphNode],
                ee: ExpressionEngine,
                typeRegistry: TypeRegistry,
                nodePreparer: Option[NodePreparer]): Boolean = {
@@ -151,19 +152,25 @@ case class PropertyValuePredicate(property: String, expectedValue: String) exten
 
   override def toString: String = s"@$property=$expectedValue"
 
-  override def evaluate(n: TreeNode,
-                        returnedNodes: Seq[TreeNode],
+  override def evaluate(n: GraphNode,
+                        returnedNodes: Seq[GraphNode],
                         ee: ExpressionEngine,
                         typeRegistry: TypeRegistry,
                         nodePreparer: Option[NodePreparer]): Boolean = {
     if (property == "value") {
       // Treat the value property specially
-      n.value == expectedValue
+      n match {
+        case tn: TreeNode => tn.value == expectedValue
+        case _ => false
+      }
     }
     else {
-      val extracted = n.childrenNamed(property)
+      val extracted = n.relatedNodesNamed(property)
       if (extracted.size == 1) {
-        val result = extracted.head.value.equals(expectedValue)
+        val result = extracted.head match {
+          case tn: TreeNode => tn.value.equals(expectedValue)
+          case _ => false
+        }
         //println(s"Comparing property [$property] of [${extracted.head.value}] against expected [$expectedValue] gave $result")
         result
       }
@@ -179,8 +186,8 @@ case class NodeNamePredicate(expectedName: String) extends Predicate {
 
   override def toString: String = s"@name=$expectedName"
 
-  override def evaluate(n: TreeNode,
-                        returnedNodes: Seq[TreeNode],
+  override def evaluate(n: GraphNode,
+                        returnedNodes: Seq[GraphNode],
                         ee: ExpressionEngine,
                         typeRegistry: TypeRegistry,
                         nodePreparer: Option[NodePreparer]): Boolean =
@@ -191,8 +198,8 @@ case class NodeTypePredicate(expectedType: String) extends Predicate {
 
   override def toString: String = s"@type=$expectedType"
 
-  override def evaluate(n: TreeNode,
-                        returnedNodes: Seq[TreeNode],
+  override def evaluate(n: GraphNode,
+                        returnedNodes: Seq[GraphNode],
                         ee: ExpressionEngine,
                         typeRegistry: TypeRegistry,
                         nodePreparer: Option[NodePreparer]): Boolean =
@@ -207,11 +214,11 @@ case class NodeTypePredicate(expectedType: String) extends Predicate {
   * @param name name of the predicate
   * @param f    function to run against returned classes
   */
-case class FunctionPredicate(override val name: String, f: (TreeNode, Seq[TreeNode]) => Boolean)
+case class FunctionPredicate(override val name: String, f: (GraphNode, Seq[GraphNode]) => Boolean)
   extends Predicate {
 
-  def evaluate(tn: TreeNode,
-               among: Seq[TreeNode],
+  def evaluate(tn: GraphNode,
+               among: Seq[GraphNode],
                ee: ExpressionEngine,
                typeRegistry: TypeRegistry,
                nodePreparer: Option[NodePreparer]): Boolean = f(tn, among)
@@ -220,8 +227,8 @@ case class FunctionPredicate(override val name: String, f: (TreeNode, Seq[TreeNo
 
 case class NestedPathExpressionPredicate(expression: PathExpression) extends Predicate {
 
-  override def evaluate(nodeToTest: TreeNode,
-                        returnedNodes: Seq[TreeNode],
+  override def evaluate(nodeToTest: GraphNode,
+                        returnedNodes: Seq[GraphNode],
                         ee: ExpressionEngine,
                         typeRegistry: TypeRegistry,
                         nodePreparer: Option[NodePreparer]): Boolean = {
