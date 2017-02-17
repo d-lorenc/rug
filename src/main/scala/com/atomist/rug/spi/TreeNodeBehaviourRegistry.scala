@@ -1,6 +1,6 @@
 package com.atomist.rug.spi
 
-import com.atomist.tree.GraphNode
+import com.atomist.graph.GraphNode
 
 /**
   * Allows Rug to dynamically find all registered Behaviour
