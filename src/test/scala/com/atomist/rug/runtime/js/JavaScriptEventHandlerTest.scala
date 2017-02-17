@@ -102,7 +102,7 @@ class JavaScriptEventHandlerTest extends FlatSpec with Matchers with DiagrammedA
             Presentable(
             Instruction.Command(Instruction.Detail(
               "n",
-              Some(MavenCoordinate("g", "a", Some("v"))),
+              Some(MavenCoordinate("g", "a")),
               Nil
             )),None)
           ),

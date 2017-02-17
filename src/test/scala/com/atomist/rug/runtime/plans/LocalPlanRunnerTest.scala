@@ -3,7 +3,6 @@ package com.atomist.rug.runtime.plans
 import com.atomist.rug.spi.Handlers.Instruction._
 import com.atomist.rug.spi.Handlers.Status._
 import com.atomist.rug.spi.Handlers._
-import com.atomist.rug.spi.JavaHandlers
 import org.mockito.Matchers._
 import org.mockito.Mockito
 import org.mockito.Mockito._
@@ -11,8 +10,6 @@ import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest._
-import com.atomist.rug.spi.JavaHandlersConverter._
-import com.atomist.rug.spi.JavaHandlers.{Response => JavaResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -41,23 +38,23 @@ class LocalPlanRunnerTest extends FunSpec with Matchers with DiagrammedAssertion
         Seq(
           Message(
             MessageText("message1"),
-            Seq(Presentable(Generate(Detail("generate1", None, Nil)), Some("label1"))),
+            Seq(Presentable(Generate(Detail("generate1", None, Nil, None)), Some("label1"))),
             None
           )
         ),
         Seq(
           Respondable(
-            Edit(Detail("edit1", None, Nil)),
+            Edit(Detail("edit1", None, Nil, None)),
             None,
             None
           ),
           Respondable(
-            Edit(Detail("edit2", None, Nil)),
+            Edit(Detail("edit2", None, Nil, None)),
             Some(Message(MessageText("pass"), Nil, None)),
             Some(Message(MessageText("fail"), Nil, None))
           ),
           Respondable(
-            Edit(Detail("edit3", None, Nil)),
+            Edit(Detail("edit3", None, Nil, None)),
             Some(Respond(Detail("respond1", None, Nil))),
             None
           ),
@@ -68,10 +65,10 @@ class LocalPlanRunnerTest extends FunSpec with Matchers with DiagrammedAssertion
           )
         )
       )
-    val instructionNameAsSuccessResponseBody = new Answer[JavaHandlers.Response]() {
+    val instructionNameAsSuccessResponseBody = new Answer[Response]() {
       def answer(invocation: InvocationOnMock) = {
-        val input = invocation.getArgumentAt(0, classOf[JavaHandlers.Instruction]).name
-        JavaHandlers.Response(Success.toString, null, 0, input)
+        val input = invocation.getArgumentAt(0, classOf[Instruction]).detail.name
+        Response(Success, None, Some(0), Some(input))
       }
     }
     when(instructionRunner.run(any(), any())).thenAnswer(instructionNameAsSuccessResponseBody)
@@ -91,17 +88,17 @@ class LocalPlanRunnerTest extends FunSpec with Matchers with DiagrammedAssertion
 
     assert(makeEventsComparable(actualPlanResult.log.toSet) == makeEventsComparable(expectedPlanLog))
 
-    verify(messageDeliverer).deliver(toJavaMessage(
-      Message(MessageText("message1"), Seq(Presentable(Generate(Detail("generate1", None, Nil)), Some("label1"))), None)),
+    verify(messageDeliverer).deliver(
+      Message(MessageText("message1"), Seq(Presentable(Generate(Detail("generate1", None, Nil)), Some("label1"))), None),
       "plan input")
-    verify(instructionRunner).run(toJavaInstruction(Edit(Detail("edit1", None, Nil))), "plan input")
-    verify(instructionRunner).run(toJavaInstruction(Edit(Detail("edit2", None, Nil))), "plan input")
-    verify(messageDeliverer).deliver(toJavaMessage(Message(MessageText("pass"), Nil, None)), "edit2")
-    verify(instructionRunner).run(toJavaInstruction(Edit(Detail("edit3", None, Nil))), "plan input")
-    verify(instructionRunner).run(toJavaInstruction(Respond(Detail("respond1", None, Nil))), "edit3")
-    verify(instructionRunner).run(toJavaInstruction(Edit(Detail("edit4", None, Nil))), "plan input")
-    verify(nestedPlanRunner).run(Plan(Seq(Message(MessageText("nested plan"), Nil, None)), Nil), "edit4")
-    verifyNoMoreInteractions(messageDeliverer, instructionRunner, nestedPlanRunner)
+    verify(instructionExecutor).run(Edit(Detail("edit1", None, Nil)), "plan input")
+    verify(instructionExecutor).run(Edit(Detail("edit2", None, Nil)), "plan input")
+    verify(messageDeliverer).deliver(Message(MessageText("pass"), Nil, None), "edit2")
+    verify(instructionExecutor).run(Edit(Detail("edit3", None, Nil)), "plan input")
+    verify(instructionExecutor).run(Respond(Detail("respond1", None, Nil)), "edit3")
+    verify(instructionExecutor).run(Edit(Detail("edit4", None, Nil)), "plan input")
+    verify(nestedPlanExecutor).run(Plan(Seq(Message(MessageText("nested plan"), Nil, None)), Nil), "edit4")
+    verifyNoMoreInteractions(messageDeliverer, instructionExecutor, nestedPlanExecutor)
   }
 
   it ("should run a plan with failing response") {
@@ -114,10 +111,10 @@ class LocalPlanRunnerTest extends FunSpec with Matchers with DiagrammedAssertion
         )
       )
     )
-    val instructionNameAsFailureResponseBody = new Answer[JavaHandlers.Response]() {
+    val instructionNameAsFailureResponseBody = new Answer[Response]() {
       def answer(invocation: InvocationOnMock) = {
-        val input = invocation.getArgumentAt(0, classOf[JavaHandlers.Instruction]).name
-        JavaHandlers.Response(Failure.toString, null, 0, input)
+        val input = invocation.getArgumentAt(0, classOf[Instruction]).detail.name
+        Response(Failure, None, Some(0), Some(input))
       }
     }
     when(instructionRunner.run(any(), any())).thenAnswer(instructionNameAsFailureResponseBody)
@@ -128,9 +125,9 @@ class LocalPlanRunnerTest extends FunSpec with Matchers with DiagrammedAssertion
     )
     assert(actualPlanResult.log.toSet == expectedPlanLog)
 
-    val inOrder = Mockito.inOrder(messageDeliverer, instructionRunner, nestedPlanRunner)
-    inOrder.verify(instructionRunner).run(toJavaInstruction(Edit(Detail("edit2", None, Nil))), "plan input")
-    inOrder.verify(messageDeliverer).deliver(toJavaMessage(Message(MessageText("fail"), Nil, None)), "edit2")
+    val inOrder = Mockito.inOrder(messageDeliverer, instructionExecutor, nestedPlanExecutor)
+    inOrder.verify(instructionExecutor).run(Edit(Detail("edit2", None, Nil)), "plan input")
+    inOrder.verify(messageDeliverer).deliver(Message(MessageText("fail"), Nil, None), "edit2")
     verifyNoMoreInteractions(messageDeliverer, instructionRunner, nestedPlanRunner)
   }
 
@@ -193,8 +190,8 @@ class LocalPlanRunnerTest extends FunSpec with Matchers with DiagrammedAssertion
         )
       )
     )
-    when(instructionRunner.run(any(), any())).thenReturn(JavaResponse(Success.toString, null, 0, null))
-    when(nestedPlanRunner.run(any(), any())).thenThrow(new IllegalStateException("Uh oh!"))
+    when(instructionExecutor.run(any(), any())).thenReturn(Response(Success, None, Some(0), None))
+    when(nestedPlanExecutor.run(any(), any())).thenThrow(new IllegalStateException("Uh oh!"))
 
     val actualPlanResult = Await.result(planRunner.run(plan, "plan input"), 10.seconds)
     val expectedPlanLog = Set(
